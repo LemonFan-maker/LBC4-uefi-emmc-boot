@@ -1,0 +1,85 @@
+/dts-v1/;
+
+/ {
+    description = "LubanCat 4 UEFI for Mainline SPL";
+    #address-cells = <1>;
+
+    images {
+        /* UEFI 本体 */
+        uefi {
+            description = "UEFI Firmware";
+            /* 修改这里：指向 .Fv 文件，而不是那个 .fd */
+            data = /incbin/("./BL33_AP_UEFI.Fv");
+            type = "standalone";
+            arch = "arm64";
+            os = "U-Boot";
+            compression = "none";
+            load = <0x00200000>;
+        };
+        /* ATF (BL31) - Main */
+        atf-1 {
+            description = "ARM Trusted Firmware - Main";
+            data = /incbin/("./bl31_0x40000.bin");
+            type = "firmware";
+            arch = "arm64";
+            os = "arm-trusted-firmware";
+            compression = "none";
+            load = <0x00040000>;
+            entry = <0x00040000>;
+        };
+
+        atf-2 {
+            description = "ARM Trusted Firmware - PMU";
+            data = /incbin/("./bl31_0xf0000.bin");
+            type = "firmware";
+            arch = "arm64";
+            os = "arm-trusted-firmware";
+            compression = "none";
+            load = <0x000f0000>;
+        };
+
+        atf-3 {
+            description = "ARM Trusted Firmware - M0";
+            data = /incbin/("./bl31_0xff100000.bin");
+            type = "firmware";
+            arch = "arm64";
+            os = "arm-trusted-firmware";
+            compression = "none";
+            load = <0xff100000>;
+        };
+
+        /* 【新增】OP-TEE 节点 */
+        optee {
+            description = "OP-TEE";
+            /* 注意：确保你运行 mkimage 命令时，这个相对路径能找到文件 */
+            data = /incbin/("./rk3588_bl32_v1.20.bin"); 
+            type = "firmware";
+            arch = "arm64";
+            os = "tee";
+            compression = "none";
+            /* RK3588 OP-TEE 的标准加载地址是 0x08400000 */
+            load = <0x08400000>;
+            entry = <0x08400000>;
+        };
+
+        /* DTB */
+        fdt {
+            description = "RK3588 DTB";
+            data = /incbin/("./rk3588s-lubancat-4.dtb");
+            type = "flat_dt";
+            arch = "arm64";
+            compression = "none";
+            load = <0x04000000>;
+        };
+    };
+
+    configurations {
+        default = "conf";
+        conf {
+            description = "LubanCat 4 Boot";
+            firmware = "atf-1";
+            /* 【修改】在这里加入了 "optee" */
+	    loadables = "optee", "atf-2", "atf-3", "fdt", "uefi";
+        };
+    };
+};
